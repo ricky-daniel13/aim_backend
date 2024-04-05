@@ -10,13 +10,14 @@ module.exports = router;
 router.post('/', async function(req, res, next){
     try {
         const con = require('../db/connection.js')();
+        console.log("Trying to log in");
         if(!req.body.email && !req.body.password){
-            res.status(401).send({ error: 'Missing User Data' });
+            res.status(400).send({ error: 'Missing User Data' });
             return;
         }
 
         var baseQuery = "SELECT * FROM users WHERE email = ?";
-        const [rows, fields] = await con.promise().execute(baseQuery, [req.body.email]);
+        const [rows] = await con.promise().query(baseQuery, [req.body.email]);
 
         if(rows.length < 1){
             res.status(401).send({ error: 'Incorrect User Data' });

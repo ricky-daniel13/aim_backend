@@ -1,8 +1,9 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const bcrypt = require('bcrypt');
-require('dotenv').config()
-console.log(process.env) // remove this after you
+require('dotenv').config();
+
+process.env.TZ = 'UTC';
 
 const app = express();
 
@@ -29,6 +30,9 @@ app.use('/login', login);
 //Import the auth middleware
 var auth = require('./src/middleware/token.js');
 app.use(auth);
+
+var inv = require('./src/routes/invoices.js');
+app.use('/invoices', inv);
 
 app.get("/protected", (request, response) => {
   const status = {
@@ -60,6 +64,7 @@ app.post("/pass", async (request, response) => {
 
 //Error Handler
 const jsonErrorHandler = (err, req, res, next) => {
+  console.log("Error: ", err);
   res.status(500).send({ error: err });
 };
 app.use(jsonErrorHandler);

@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 //Token Middleware
 module.exports = async function (req, res, next) {
     if (!req.headers.authorization) {
-        res.status(403).send({ error: "Missing Access Token" });
+        res.status(401).send({ error: "Missing Access Token" });
         return;
     }
 
@@ -15,10 +15,10 @@ module.exports = async function (req, res, next) {
         const decoCode = jwt.verify(token, process.env.JWT_KEY);
         console.log("Token: ", decoCode)
         
-        const [rows, fields] = await con.promise().execute(baseQuery, [decoCode.email]);
+        const [rows] = await con.promise().query(baseQuery, [decoCode.email]);
  
         if (rows.length < 1) {
-            res.status(403).send({ error: "Catastrofic error" });
+            res.status(500).send({ error: "Catastrofic error" });
             return;
         }
  
@@ -36,7 +36,7 @@ module.exports = async function (req, res, next) {
 
     } catch (error) {
         console.log("Token decoding error: ", error);
-        res.status(403).send({ error: "Invalid Token" });
+        res.status(401).send({ error: "Invalid Token" });
     } finally {
         console.log("Closing connection");
         
