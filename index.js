@@ -1,11 +1,18 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const bcrypt = require('bcrypt');
+require('dotenv').config()
+console.log(process.env) // remove this after you
 
 const app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+//Import the login router
+var login = require('./src/routes/login.js');
+app.use('/login', login);
+
 
 app.get("/", (request, response) => {
   const status = {
@@ -15,32 +22,50 @@ app.get("/", (request, response) => {
   response.send(status);
 });
 
+//Import the login router
+var login = require('./src/routes/login.js');
+app.use('/login', login);
+
+//Import the auth middleware
+var auth = require('./src/middleware/token.js');
+app.use(auth);
+
+app.get("/protected", (request, response) => {
+  const status = {
+    auth: true,
+  };
+
+  response.send(status);
+});
+
 app.post("/pass", async (request, response) => {
-    
-    const hashedPassword = await bcrypt.hash(request.body.pass, 10);
 
-    let verified = false;
+  const hashedPassword = await bcrypt.hash(request.body.pass, 10);
 
-    if(request.body.passHash)
-        verified = await bcrypt.compare(request.body.pass, request.body.passHash);
+  let verified = false;
 
-    const status = {
-        hashed: hashedPassword,
-        verified: verified
-      };
+  if (request.body.passHash)
+    verified = await bcrypt.compare(request.body.pass, request.body.passHash);
 
-  
-    response.send(status);
-  });
+  const status = {
+    hashed: hashedPassword,
+    verified: verified
+  };
 
+
+  response.send(status);
+});
+
+
+
+//Error Handler
 const jsonErrorHandler = (err, req, res, next) => {
-    res.status(500).send({ error: err });
-  };
+  res.status(500).send({ error: err });
+};
 app.use(jsonErrorHandler);
-
 const json404Handler = (req, res, next) => {
-    res.status(404).send({error:"Route not found"});
-  };
+  res.status(404).send({ error: "Route not found" });
+};
 app.use(json404Handler);
 
 
