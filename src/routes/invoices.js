@@ -14,19 +14,36 @@ router.get('/', async function (req, res, next) {
     try {
         const con = require('../db/connection.js')().promise();
 
-        let baseQuery = "SELECT i.id, i.client_email, c.name AS client_name, i.date, i.discount, i.voucher_url, i_p.product_id, i_p.quantity, i_p.unit_price, p.name AS product_name FROM invoices AS i\
- LEFT JOIN invoices_products AS i_p ON i_p.invoice_id = i.id LEFT JOIN products AS p ON p.id = i_p.product_id LEFT JOIN clients AS c ON i.client_email = c.user_email";
+        let baseQuery = "SELECT i.id, i.client_email, c.name AS client_name, i.date, i.discount, i.voucher_url, i_p.product_id, i_p.quantity, i_p.unit_price, p.name AS product_name FROM (SELECT * FROM invoices";
+
+        const page = req.query.page == undefined ? 0 : Number.parseInt(req.query.page);
+        const limit = req.query.limit == undefined ? 5 : Number.parseInt(req.query.limit);
+
+        if (Number.isNaN(page)||Number.isNaN(limit)) {
+            res.status(400).send({ error: 'Bad query data' });
+            return;
+        }
+
 
         const params = [];
         if (req.user.isClient) {
-            baseQuery += " WHERE i.client_email = ?";
+            baseQuery += " WHERE client_email = ?";
             params.push(req.user.email);
         }
 
+        baseQuery += " ORDER BY id DESC LIMIT ? OFFSET ?) AS i LEFT JOIN invoices_products AS i_p ON i_p.invoice_id = i.id LEFT JOIN products AS p ON p.id = i_p.product_id LEFT JOIN clients AS c ON i.client_email = c.user_email";
+        params.push(limit, page*limit);
+
         try {
             const [rows] = await con.query(baseQuery, params);
+            const countParams = [];
 
-            console.log("Result: ", rows);
+            baseQuery = "SELECT count(*) as row_count FROM invoices";
+            baseQuery += " WHERE client_email = ?";
+            params.push(req.user.email);
+            const [countRows] = await con.query(baseQuery, params);
+
+            console.log("Result: ", countRows);
 
             const invoices = [];
 
@@ -54,7 +71,10 @@ router.get('/', async function (req, res, next) {
                 });
             });
 
-            res.status(200).send(invoices);
+            res.status(200).send({
+                rowCount:countRows[0].row_count,
+                invoices:invoices
+            });
         } catch (error) {
             console.log(error);
             res.status(500).send({error:"Internal Server Error"});

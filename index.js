@@ -1,12 +1,14 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const bcrypt = require('bcrypt');
+const cors = require('cors');
 require('dotenv').config();
 
 process.env.TZ = 'UTC';
 
 const app = express();
 
+app.use(cors())
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -33,6 +35,12 @@ app.use(auth);
 
 var inv = require('./src/routes/invoices.js');
 app.use('/invoices', inv);
+
+var clients = require('./src/routes/clients.js');
+app.use('/clients', clients);
+
+var products = require('./src/routes/products.js');
+app.use('/products', products);
 
 app.get("/protected", (request, response) => {
   const status = {

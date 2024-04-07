@@ -16,7 +16,7 @@ router.post('/', async function(req, res, next){
             return;
         }
 
-        var baseQuery = "SELECT * FROM users WHERE email = ?";
+        let baseQuery = "SELECT * FROM users WHERE email = ?";
         const [rows] = await con.promise().query(baseQuery, [req.body.email]);
 
         if(rows.length < 1){
@@ -33,9 +33,17 @@ router.post('/', async function(req, res, next){
             return;
         }
 
+        let name = req.body.email;
+
+        if(rows[0].is_client==1){
+            baseQuery = "SELECT * FROM clients WHERE user_email = ?";
+            const [clientRows] = await con.promise().query(baseQuery, [req.body.email]);
+            name = clientRows[0].name;
+        }
+
         const token = jwt.sign({ email: req.body.email }, process.env.JWT_KEY, { expiresIn: '1h' });
 
-        res.json({authToken:token});
+        res.json({authToken:token, name:name, isClient:rows[0].is_client==1});
 
         con.close();
 
