@@ -39,8 +39,10 @@ router.get('/', async function (req, res, next) {
             const countParams = [];
 
             baseQuery = "SELECT count(*) as row_count FROM invoices";
-            baseQuery += " WHERE client_email = ?";
-            params.push(req.user.email);
+            if (req.user.isClient) {
+                baseQuery += " WHERE client_email = ?";
+                params.push(req.user.email);
+            }
             const [countRows] = await con.query(baseQuery, params);
 
             console.log("Result: ", countRows);
