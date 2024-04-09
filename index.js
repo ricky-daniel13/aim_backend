@@ -16,6 +16,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 var login = require('./src/routes/login.js');
 app.use('/login', login);
 
+//Import the S3 serving router
+var serve = require('./src/routes/serve.js');
+app.use('/serve', serve);
 
 app.get("/", (request, response) => {
   const status = {
@@ -25,14 +28,11 @@ app.get("/", (request, response) => {
   response.send(status);
 });
 
-//Import the login router
-var login = require('./src/routes/login.js');
-app.use('/login', login);
-
 //Import the auth middleware
 var auth = require('./src/middleware/token.js');
 app.use(auth);
 
+//------- Any routes forward need to be authorized -------
 var inv = require('./src/routes/invoices.js');
 app.use('/invoices', inv);
 
@@ -42,14 +42,8 @@ app.use('/clients', clients);
 var products = require('./src/routes/products.js');
 app.use('/products', products);
 
-app.get("/protected", (request, response) => {
-  const status = {
-    auth: true,
-  };
-
-  response.send(status);
-});
-
+//Internal function for hashing passwords.
+/*
 app.post("/pass", async (request, response) => {
 
   const hashedPassword = await bcrypt.hash(request.body.pass, 10);
@@ -66,7 +60,7 @@ app.post("/pass", async (request, response) => {
 
 
   response.send(status);
-});
+});*/
 
 
 
