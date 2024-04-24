@@ -142,7 +142,7 @@ router.post('/', async function (req, res, next) {
     }
 });
 
-router.post('/:id/image', async function (req, res, next) {
+/*router.post('/:id/image', async function (req, res, next) {
     try {
         if (req.user.isClient) {
             res.status(403).send({ error: 'User isn\'t allowed to make this action' });
@@ -204,4 +204,4 @@ router.post('/:id/image', async function (req, res, next) {
         console.error(error);
         res.status(500).send({ submitted: false });
     }
-});
+});*/

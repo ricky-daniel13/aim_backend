@@ -16,10 +16,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 var login = require('./src/routes/login.js');
 app.use('/login', login);
 
-//Import the S3 serving router
-var serve = require('./src/routes/serve.js');
-app.use('/serve', serve);
-
 app.get("/", (request, response) => {
   const status = {
     Status: "Running",
