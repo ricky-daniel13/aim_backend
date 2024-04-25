@@ -1,5 +1,4 @@
-import express, { Express, Request, Response, NextFunction } from "express";
-import bcrypt from "bcrypt";
+import {Request, Response, NextFunction } from "express";
 import jwt, { VerifyOptions } from "jsonwebtoken"
 import dbConn from "../db/connection";
 import { RowDataPacket } from "mysql2";

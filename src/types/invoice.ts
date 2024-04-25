@@ -1,4 +1,4 @@
-import { InvoiceProduct } from "./product"
+import { InvoiceProduct } from "./invoiceproduct"
 
 export type Invoice = {
     id: number,

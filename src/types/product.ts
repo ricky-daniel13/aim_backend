@@ -1,6 +1,5 @@
-export type InvoiceProduct = {
+export type Product = {
     id: number,
-    quantity: number,
-    unitPrice: number,
+    price: number,
     name: string
 }

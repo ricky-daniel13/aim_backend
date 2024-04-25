@@ -1,18 +1,20 @@
-var express = require('express');
-var router = express.Router();
-
+import express, { Express, Request, Response, NextFunction } from "express";
+import { RowDataPacket } from "mysql2";
+import dbConn from "../db/connection";
+import { Client } from "../types/clients";
+const router = express.Router();
 
 //Routes will go here
-module.exports = router;
+export default router;
 
-router.get('/', async function (req, res, next) {
-    if(req.user.isClient){
+router.get('/', async function (req: Request, res: Response, next: NextFunction) {
+    if(req.user!.isClient){
         res.status(403).send({ error: 'User isn\'t allowed to make this action' });
         return;
     }
 
     try {
-        const con = require('../db/connection.js')().promise();
+        const con = dbConn().promise();
 
         let baseQuery = "SELECT clients.user_email, clients.name, MIN(invoices.date) AS oldest_invoice_date, MAX(total_amount) AS most_expensive_invoice_total FROM clients LEFT JOIN (\
 SELECT invoices.client_email, invoices.id, SUM((invoices_products.unit_price * invoices_products.quantity) * (1 - (invoices.discount / 100))) AS total_amount FROM invoices\
@@ -20,32 +22,27 @@ SELECT invoices.client_email, invoices.id, SUM((invoices_products.unit_price * i
  invoices ON invoice_totals.id = invoices.id GROUP BY clients.user_email";
 
         try {
-            const [rows] = await con.query(baseQuery);
-
-            console.log("Result: ", rows);
-
-            const clients = [];
-
-            
+            const [rows] = await con.query<RowDataPacket[]>(baseQuery);
+            const clients: Client[] = [];
 
             rows.forEach(row => {
                 let allowedDiscount = 0;
 
-                if(row.most_expensive_invoice_total!=null){
-                    if(row.most_expensive_invoice_total > 2000)
+                if(row['most_expensive_invoice_total']!=null){
+                    if(row['most_expensive_invoice_total'] > 2000)
                         allowedDiscount = 45;
-                    if(row.most_expensive_invoice_total < 1000)
+                    if(row['most_expensive_invoice_total'] < 1000)
                         allowedDiscount = 10;
                 }
 
-                let dateDif = new Date(Date.now() - (row.oldest_invoice_date == null ? Date.now() : row.oldest_invoice_date.getTime())).getUTCFullYear() - 1970; //restamos la unix timestamp de hoy y la de la fecha de la compra mas vieja. Eso nos da la diferencia de años + 1970
+                let dateDif = new Date(Date.now() - (row['oldest_invoice_date'] == null ? Date.now() : row['oldest_invoice_date'].getTime())).getUTCFullYear() - 1970; //restamos la unix timestamp de hoy y la de la fecha de la compra mas vieja. Eso nos da la diferencia de años + 1970
 
                 if(dateDif>=3)
                     allowedDiscount = 30;
 
                 clients.push({
-                    email : row.user_email,
-                    name : row.name,
+                    email : row['user_email'],
+                    name : row['name'],
                     allowedDiscount : allowedDiscount
                 });
             });
@@ -55,7 +52,7 @@ SELECT invoices.client_email, invoices.id, SUM((invoices_products.unit_price * i
             console.log(error);
             res.status(500).send({error:"Internal Server Error"});
         } finally {
-            con.close();
+            con.end();
         }
 
     } catch (error) {

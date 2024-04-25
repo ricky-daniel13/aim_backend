@@ -39,13 +39,11 @@ app.get("/authed", (request: Request, response: Response) => {
 import inv from "./src/routes/invoices";
 app.use('/invoices', inv);
 
-/*
+import products from "./src/routes/products";
+app.use('/products', products);
 
-var clients = require('./src/routes/clients.js');
+import clients from "./src/routes/clients";
 app.use('/clients', clients);
-
-var products = require('./src/routes/products.js');
-app.use('/products', products); */
 
 //Internal function for hashing passwords.
 /*
@@ -66,7 +64,6 @@ app.post("/pass", async (request, response) => {
 
   response.send(status);
 });*/
-
 
 
 //Error Handler
