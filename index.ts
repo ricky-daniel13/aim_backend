@@ -34,10 +34,12 @@ app.get("/authed", (request: Request, response: Response) => {
 
   response.send(status);
 });
-/*
+
 //------- Any routes forward need to be authorized -------
-var inv = require('./src/routes/invoices.js');
+import inv from "./src/routes/invoices";
 app.use('/invoices', inv);
+
+/*
 
 var clients = require('./src/routes/clients.js');
 app.use('/clients', clients);

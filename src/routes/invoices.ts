@@ -1,23 +1,19 @@
-const express = require('express');
+import express, { Express, Request, Response, NextFunction } from "express";
 const router = express.Router();
-const formidable = require('formidable');
-const fs = require('fs');
-const AWS = require('aws-sdk');
-const s3 = new AWS.S3();
-const path = require('path');
+import dbConn from "../db/connection";
+import { Invoice } from "../types/invoice";
+import { ResultSetHeader, RowDataPacket } from "mysql2";
 
+export default router;
 
-//Routes will go here
-module.exports = router;
+interface InvoiceGetQuery {
+    page?: string;
+    limit?: string;
+  }
 
-router.get('/', async function (req, res, next) {
-    /*if(req.user.isClient){
-        res.status(403).send({ error: 'User isn\'t allowed to make this action' });
-        return;
-    }*/
-
+router.get('/', async function (req: Request<{}, {}, {}, InvoiceGetQuery>, res: Response, next: NextFunction) {
     try {
-        const con = require('../db/connection.js')().promise();
+        const con = dbConn().promise();
 
         let baseQuery = "SELECT i.id, i.client_email, c.name AS client_name, i.date, i.discount, i.voucher_url, i_p.product_id, i_p.quantity, i_p.unit_price, p.name AS product_name FROM (SELECT * FROM invoices";
 
@@ -31,50 +27,52 @@ router.get('/', async function (req, res, next) {
 
 
         const params = [];
-        if (req.user.isClient) {
+        if (req.user!.isClient) {
             baseQuery += " WHERE client_email = ?";
-            params.push(req.user.email);
+            params.push(req.user!.email);
         }
 
         baseQuery += " ORDER BY id DESC LIMIT ? OFFSET ?) AS i LEFT JOIN invoices_products AS i_p ON i_p.invoice_id = i.id LEFT JOIN products AS p ON p.id = i_p.product_id LEFT JOIN clients AS c ON i.client_email = c.user_email";
         params.push(limit, page * limit);
 
         try {
-            const [rows] = await con.query(baseQuery, params);
+            const [rows] = await con.query<RowDataPacket[]>(baseQuery, params);
             const countParams = [];
 
             baseQuery = "SELECT count(*) as row_count FROM invoices";
-            if (req.user.isClient) {
+            if (req.user!.isClient) {
                 baseQuery += " WHERE client_email = ?";
-                params.push(req.user.email);
+                countParams.push(req.user!.email);
             }
-            const [countRows] = await con.query(baseQuery, params);
+            const [countRows] = await con.query<RowDataPacket[]>(baseQuery, countParams);
 
             console.log("Result: ", countRows);
 
-            const invoices = [];
+            const invoices: Invoice[] = [];
 
             let currentId = -1;
-            let currentInvoice = null;
+            let currentInvoice: Invoice|null = null;
+
             rows.forEach(row => {
                 if (currentId != row.id) {
                     currentInvoice = {
-                        id: row.id,
-                        clientName: row.client_name,
-                        clientEmail: row.client_email,
-                        date: row.date.getTime(),
-                        discount: row.discount,
-                        imageUrl: row.voucher_url ? process.env.URL + path.join("serve",row.voucher_url) : null,
+                        id: row['id'],
+                        clientName: row['client_name'],
+                        clientEmail: row['client_email'],
+                        date: row['date'].getTime(),
+                        discount: row['discount'],
+                        //imageUrl: row.voucher_url ? process.env.URL + path.join("serve",row.voucher_url) : null,
+                        imageUrl: null,
                         products: []
                     };
                     invoices.push(currentInvoice);
                     currentId = row.id;
                 }
-                currentInvoice.products.push({
-                    id: row.product_id,
-                    quantity: row.quantity,
-                    unitPrice: row.unit_price,
-                    name: row.product_name
+                currentInvoice!.products.push({
+                    id: row['product_id'],
+                    quantity: row['quantity'],
+                    unitPrice: row['unit_price'],
+                    name: row['product_name']
                 });
             });
 
@@ -86,7 +84,7 @@ router.get('/', async function (req, res, next) {
             console.log(error);
             res.status(500).send({ error: "Internal Server Error" });
         } finally {
-            con.close();
+            con.end();
         }
 
     } catch (error) {
@@ -95,8 +93,20 @@ router.get('/', async function (req, res, next) {
     }
 });
 
-router.post('/', async function (req, res, next) {
-    if (req.user.isClient) {
+interface InvoicePostBodyProducts {
+    id?: number,
+    quantity?: number
+  }
+
+interface InvoicePostBody {
+    clientEmail?: string,
+    date?: Date,
+    discount?:number,
+    products?:InvoicePostBodyProducts[]
+  }
+
+router.post('/', async function (req:Request<{}, {}, InvoicePostBody, {}>, res:Response, next:NextFunction) {
+    if (req.user!.isClient) {
         res.status(403).send({ error: 'User isn\'t allowed to make this action' });
         return;
     }
@@ -109,17 +119,17 @@ router.post('/', async function (req, res, next) {
     }
 
     try {
-        const con = require('../db/connection.js')().promise();
+        const con = dbConn().promise();
 
-        await con.query('START TRANSACTION');
+        await con.query<ResultSetHeader>('START TRANSACTION');
         let baseQuery = "INSERT INTO invoices (client_email, date, discount) VALUES (?, ?, ?)";
         //
 
         console.log("Inserting date: " + new Date(req.body.date).toISOString().slice(0, 19).replace('T', ' '));
         let datetime = new Date(req.body.date).toISOString().slice(0, 19).replace('T', ' ');
-        const [rows] = await con.query(baseQuery, [req.body.clientEmail, datetime, req.body.discount]);
+        const [rows] = await con.query<ResultSetHeader>(baseQuery, [req.body.clientEmail, datetime, req.body.discount]);
 
-        if (rows.length < 1) {
+        if (rows.affectedRows==-1) {
             res.status(401).send({ error: 'Incorrect User Data' });
             return;
         }
@@ -128,14 +138,14 @@ router.post('/', async function (req, res, next) {
 
         req.body.products.forEach(async product => {
             let productQuery = "INSERT INTO invoices_products (invoice_id, product_id, quantity, unit_price) VALUES (?, ?, ?, (SELECT price FROM products WHERE id = ?))";
-            const [prodRows] = await con.query(productQuery, [rows.insertId, product.id, product.quantity, product.id]);
+            const [prodRows] = await con.query<ResultSetHeader>(productQuery, [rows.insertId, product.id, product.quantity, product.id]);
         });
 
         res.status(201).send({ created: true, id: rows.insertId });
 
-        await con.query('COMMIT');
+        await con.query<ResultSetHeader>('COMMIT');
 
-        con.close();
+        con.end();
     } catch (error) {
         next(error);
         return;
