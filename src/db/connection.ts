@@ -1,13 +1,12 @@
-'use strict';
-const mysql = require('mysql2');
-function dbConn(){
-  //local mysql db connection
-  const dbConn = mysql.createConnection({
+import mysql, {Connection, ConnectionOptions } from 'mysql2';
+function dbConn(): Connection {
+  const access: ConnectionOptions = {
     host: process.env.MYSQL_URL,
     user: process.env.MYSQL_USER,
     password: process.env.MYSQL_PASSWORD,
     database: process.env.MYSQL_DB,
-  });
+  };
+  const dbConn = mysql.createConnection(access);
   dbConn.connect(function (err) {
     if (err) {
       console.log("DATABASE ERROR: ", err);
@@ -16,4 +15,4 @@ function dbConn(){
   });
   return dbConn;
 }
-module.exports = dbConn;
+export default dbConn;

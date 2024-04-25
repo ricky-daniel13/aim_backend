@@ -1,22 +1,21 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const bcrypt = require('bcrypt');
-const cors = require('cors');
-require('dotenv').config();
+import express, { Express, Request, Response, NextFunction } from "express";
+import cors from 'cors';
+import dotenv from "dotenv";
+dotenv.config();
 
 process.env.TZ = 'UTC';
 
-const app = express();
+const app: Express = express();
 
 app.use(cors())
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.urlencoded({extended:true}));
 
 //Import the login router
-var login = require('./src/routes/login.js');
+import login from "./src/routes/login";
 app.use('/login', login);
 
-app.get("/", (request, response) => {
+app.get("/", (request: Request, response: Response) => {
   const status = {
     Status: "Running",
   };
@@ -25,9 +24,17 @@ app.get("/", (request, response) => {
 });
 
 //Import the auth middleware
-var auth = require('./src/middleware/token.js');
+import auth from "./src/middleware/auth";
 app.use(auth);
 
+app.get("/authed", (request: Request, response: Response) => {
+  const status = {
+    Status: "Authed",
+  };
+
+  response.send(status);
+});
+/*
 //------- Any routes forward need to be authorized -------
 var inv = require('./src/routes/invoices.js');
 app.use('/invoices', inv);
@@ -36,7 +43,7 @@ var clients = require('./src/routes/clients.js');
 app.use('/clients', clients);
 
 var products = require('./src/routes/products.js');
-app.use('/products', products);
+app.use('/products', products); */
 
 //Internal function for hashing passwords.
 /*
@@ -61,12 +68,12 @@ app.post("/pass", async (request, response) => {
 
 
 //Error Handler
-const jsonErrorHandler = (err, req, res, next) => {
+const jsonErrorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
   console.log("Error: ", err);
   res.status(500).send({ error: err });
 };
 app.use(jsonErrorHandler);
-const json404Handler = (req, res, next) => {
+const json404Handler = (req: Request, res: Response, next: NextFunction) => {
   res.status(404).send({ error: "Route not found" });
 };
 app.use(json404Handler);
